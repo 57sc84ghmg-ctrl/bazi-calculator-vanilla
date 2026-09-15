@@ -83,12 +83,13 @@
 
   .bz-section-title { font-size: 13px; color: var(--muted); letter-spacing: 2px; margin-bottom: 16px; }
 
-  .bz-lifepalace {
+  .bz-inforow {
     display: flex; align-items: baseline; justify-content: space-between;
-    padding: 14px 0; border-bottom: 1px solid var(--line); margin-bottom: 32px; font-size: 13px;
+    padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 13px;
   }
-  .bz-lifepalace-chars { font-size: 17px; margin: 0 6px; }
-  .bz-lifepalace-empty { color: var(--muted); font-size: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+  .bz-inforow-chars { font-size: 17px; margin: 0 6px; }
+  .bz-inforow-empty { color: var(--muted); font-size: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .bz-inforow-group { margin-bottom: 32px; }
 
   .bz-elements { margin-bottom: 32px; }
   .bz-elem-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
@@ -107,6 +108,12 @@
   .bz-yongshen-row { display: flex; gap: 8px; font-size: 13px; margin-bottom: 6px; }
   .bz-yongshen-row .tag { width: 56px; flex: none; color: var(--muted); }
   .bz-yongshen-row .vals { font-family: "Noto Serif SC", "Songti SC", "STSong", serif; letter-spacing: 4px; }
+
+  .bz-palace { margin-bottom: 32px; }
+  .bz-palace-item { padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .bz-palace-head { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .bz-palace-head .name { color: var(--muted); letter-spacing: 1px; }
+  .bz-palace-text { font-size: 13px; line-height: 1.8; color: var(--ink); }
 
   .bz-dayun-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
   .bz-dayun-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
@@ -205,6 +212,16 @@ function getLifePalace(yearStemIdx, monthBranchIdx, hourBranchIdx) {
   const startStem = [2, 4, 6, 8, 0][group];
   const stemIdx = mod(startStem + orderFromYin, 10);
   return { stemIdx, branchIdx };
+}
+
+const BRANCH_COMBINE = [1, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2];
+
+function getTaiYuan(monthPillar) {
+  return { stemIdx: mod(monthPillar.stemIdx + 1, 10), branchIdx: mod(monthPillar.branchIdx + 3, 12) };
+}
+
+function getTaiXi(dayPillar) {
+  return { stemIdx: mod(dayPillar.stemIdx + 5, 10), branchIdx: BRANCH_COMBINE[dayPillar.branchIdx] };
 }
 
 function tenGodFor(dayMasterStemIdx, targetStemIdx) {
@@ -307,7 +324,12 @@ function computeBazi(dateStr, timeStr, hasTime, gender) {
     lifePalace = { ...lp, stemGod: tenGodFor(dayMasterStemIdx, lp.stemIdx) };
   }
 
-  return { pillars: pillarsWithGods, counts, dayMasterStemIdx, year: year.effectiveYear, dayun: dayunWithGods, lifePalace };
+  const taiYuanRaw = getTaiYuan(month);
+  const taiYuan = { ...taiYuanRaw, stemGod: tenGodFor(dayMasterStemIdx, taiYuanRaw.stemIdx) };
+  const taiXiRaw = getTaiXi(day);
+  const taiXi = { ...taiXiRaw, stemGod: tenGodFor(dayMasterStemIdx, taiXiRaw.stemIdx) };
+
+  return { pillars: pillarsWithGods, counts, dayMasterStemIdx, year: year.effectiveYear, dayun: dayunWithGods, lifePalace, taiYuan, taiXi };
 }
 
 function analyzeYongShen(counts, dayMasterElement) {
@@ -343,6 +365,21 @@ const STRENGTH_TEXT = {
   balanced: "日主強弱大致均衡，喜忌不明顯，可依大運起伏靈活調整。",
 };
 const STRENGTH_LABEL = { strong: "身強", weak: "身弱", balanced: "中和" };
+
+const PALACE_NAMES = { 年柱: "祖上宮", 月柱: "父母宮", 日柱: "夫妻宮", 時柱: "子女宮" };
+
+const TEN_GOD_TRAIT = {
+  比肩: "獨立自主，重視對等與各自的空間",
+  劫財: "直爽豪邁，行動力強，不拘小節",
+  食神: "溫和寬厚，相處起來輕鬆自在",
+  傷官: "聰穎靈活，直言坦率，重視自我表達",
+  偏財: "圓融變通，善於周旋協調",
+  正財: "務實穩重，重視責任與經營",
+  七殺: "果決明快，行動力強，不畏挑戰",
+  正官: "重視秩序與分寸，責任感強",
+  偏印: "感受細膩，思路獨特，重視內在空間",
+  正印: "溫厚包容，重視情感連結與支持",
+};
 
 const ELEMENT_TEXT = {
   木: "生機與生長。你的傾向是不斷向外擴展、追求新的可能，重視成長與空間，有時也需要提醒自己適度收斂。",
@@ -422,6 +459,8 @@ function renderInput() {
       <div class="bz-note">
         本工具以陽曆日期與簡化節氣分界推算，十神依主氣計算，<br/>
         大運起運歲數為簡化估算，命宮需已知時辰始能推算，<br/>
+        胎元由月柱推算、息元（胎息）由日柱推算，<br/>
+        宮位解讀為地支十神的描述性參考，非具體人數或吉凶論斷，<br/>
         五行喜忌採簡化扶抑法（未計季節旺衰），僅供娛樂參考，非專業命理諮詢。
       </div>
     </div>
@@ -446,12 +485,40 @@ function renderResult() {
   `).join("");
 
   const lifePalaceHtml = r.lifePalace ? `
-    <div class="bz-lifepalace">
+    <div class="bz-inforow">
       <span style="color:var(--muted)">命宮</span>
-      <span class="bz-lifepalace-chars bz-serif">${STEMS[r.lifePalace.stemIdx]}${BRANCHES[r.lifePalace.branchIdx]}</span>
+      <span class="bz-inforow-chars bz-serif">${STEMS[r.lifePalace.stemIdx]}${BRANCHES[r.lifePalace.branchIdx]}</span>
       <span style="color:var(--muted)">${STEM_ELEMENT[r.lifePalace.stemIdx]}・${r.lifePalace.stemGod}</span>
     </div>
-  ` : `<div class="bz-lifepalace-empty">命宮需知道出生時辰方可推算</div>`;
+  ` : `<div class="bz-inforow-empty">命宮需知道出生時辰方可推算</div>`;
+
+  const taiYuanXiHtml = `
+    <div class="bz-inforow">
+      <span style="color:var(--muted)">先天胎元</span>
+      <span class="bz-inforow-chars bz-serif">${STEMS[r.taiYuan.stemIdx]}${BRANCHES[r.taiYuan.branchIdx]}</span>
+      <span style="color:var(--muted)">${STEM_ELEMENT[r.taiYuan.stemIdx]}・${r.taiYuan.stemGod}</span>
+    </div>
+    <div class="bz-inforow">
+      <span style="color:var(--muted)">後天息元</span>
+      <span class="bz-inforow-chars bz-serif">${STEMS[r.taiXi.stemIdx]}${BRANCHES[r.taiXi.branchIdx]}</span>
+      <span style="color:var(--muted)">${STEM_ELEMENT[r.taiXi.stemIdx]}・${r.taiXi.stemGod}</span>
+    </div>
+  `;
+
+  const palaceHtml = `
+    <div class="bz-palace">
+      <div class="bz-section-title">宮位</div>
+      ${r.pillars.map((p) => `
+        <div class="bz-palace-item">
+          <div class="bz-palace-head">
+            <span class="name">${p.label}・${PALACE_NAMES[p.label]}</span>
+            <span>${p.branchGod}</span>
+          </div>
+          <div class="bz-palace-text">${TEN_GOD_TRAIT[p.branchGod]}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
 
   const elementsHtml = ELEMENT_ORDER.map((el) => `
     <div class="bz-elem-row">
@@ -501,7 +568,12 @@ function renderResult() {
         </div>
       </div>
 
-      ${lifePalaceHtml}
+      <div class="bz-inforow-group">
+        ${lifePalaceHtml}
+        ${taiYuanXiHtml}
+      </div>
+
+      ${palaceHtml}
 
       <div class="bz-elements">
         <div class="bz-section-title">五行分佈</div>

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>八字命盤・十神・大運</title>
+<style>
+  :root {
+    --ink: #161513;
+    --paper: #FAF9F5;
+    --line: #DCD8CE;
+    --muted: #8B8579;
+    --seal: #9C2B1B;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--paper); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+  .bz-serif { font-family: "Noto Serif SC", "Songti SC", "STSong", serif; }
+  #root { min-height: 100vh; display: flex; justify-content: center; padding: 32px 20px 48px; }
+  .bz-container { width: 100%; max-width: 440px; }
+
+  .bz-hero { text-align: center; margin-bottom: 36px; }
+  .bz-hero-mark { font-size: 64px; line-height: 1; letter-spacing: 4px; font-weight: 500; }
+  .bz-hero-sub { margin-top: 10px; font-size: 13px; letter-spacing: 3px; color: var(--muted); }
+
+  .bz-field { margin-bottom: 22px; }
+  .bz-field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; letter-spacing: 1px; }
+  .bz-field input[type="date"], .bz-field input[type="time"] {
+    width: 100%; background: transparent; border: none;
+    border-bottom: 1px solid var(--line); padding: 10px 2px; font-size: 17px;
+    color: var(--ink); font-family: inherit; outline: none;
+  }
+  .bz-field input:focus { border-bottom-color: var(--ink); }
+
+  .bz-gender { display: flex; border-bottom: 1px solid var(--line); }
+  .bz-gender button {
+    flex: 1; padding: 10px 2px; background: transparent; border: none;
+    font-size: 15px; color: var(--muted); font-family: inherit; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .bz-gender button.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+  .bz-checkbox-row { display: flex; align-items: center; gap: 8px; margin: -8px 0 24px; font-size: 13px; color: var(--muted); }
+  .bz-checkbox-row input { accent-color: var(--ink); }
+
+  .bz-submit {
+    width: 100%; padding: 14px; background: var(--ink); color: var(--paper);
+    border: none; font-size: 15px; letter-spacing: 4px; cursor: pointer;
+    font-family: inherit; transition: opacity 0.15s ease;
+  }
+  .bz-submit:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+  .bz-submit:not(:disabled):active { opacity: 0.75; }
+
+  .bz-note { margin-top: 20px; font-size: 12px; color: var(--muted); line-height: 1.7; text-align: center; }
+
+  .bz-datehead { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 28px; letter-spacing: 1px; }
+
+  .bz-pillars { display: grid; border-top: 1px solid var(--line); border-left: 1px solid var(--line); margin-bottom: 32px; }
+  .bz-pillar {
+    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 14px 2px 14px; text-align: center;
+    opacity: 0; transform: translateY(8px); transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .bz-pillar.show { opacity: 1; transform: translateY(0); }
+  .bz-pillar-label { font-size: 12px; color: var(--muted); margin-bottom: 12px; letter-spacing: 2px; }
+  .bz-pillar-god { font-size: 11px; color: var(--muted); height: 14px; }
+  .bz-pillar-god.self { color: var(--seal); }
+  .bz-pillar-char { font-size: 32px; line-height: 1.35; font-weight: 500; }
+
+  .bz-daymaster {
+    display: flex; align-items: center; gap: 18px; padding: 20px 0;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 32px;
+  }
+  .bz-seal {
+    flex: none; width: 56px; height: 56px; border: 2px solid var(--seal); color: var(--seal);
+    border-radius: 3px; display: flex; align-items: center; justify-content: center;
+    font-size: 26px; transform: rotate(-3deg);
+  }
+  .bz-daymaster-text { font-size: 13px; line-height: 1.8; color: var(--ink); }
+  .bz-daymaster-text b { font-weight: 600; }
+
+  .bz-section-title { font-size: 13px; color: var(--muted); letter-spacing: 2px; margin-bottom: 16px; }
+
+  .bz-lifepalace {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 14px 0; border-bottom: 1px solid var(--line); margin-bottom: 32px; font-size: 13px;
+  }
+  .bz-lifepalace-chars { font-size: 17px; margin: 0 6px; }
+  .bz-lifepalace-empty { color: var(--muted); font-size: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+
+  .bz-elements { margin-bottom: 32px; }
+  .bz-elem-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .bz-elem-name { width: 18px; font-size: 14px; flex: none; }
+  .bz-elem-dot { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--muted); flex: none; }
+  .bz-elem-dot.favor { background: var(--seal); border-color: var(--seal); }
+  .bz-elem-track { flex: 1; height: 6px; background: var(--line); position: relative; }
+  .bz-elem-fill { position: absolute; top: 0; left: 0; bottom: 0; background: var(--ink); width: 0%; transition: width 0.6s ease; }
+  .bz-elem-count { width: 16px; text-align: right; font-size: 12px; color: var(--muted); flex: none; }
+
+  .bz-yongshen { padding: 18px 0; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+  .bz-yongshen-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .bz-yongshen-badge { font-size: 15px; font-weight: 600; }
+  .bz-yongshen-ratio { font-size: 12px; color: var(--muted); }
+  .bz-yongshen-text { font-size: 13px; line-height: 1.9; color: var(--ink); margin-bottom: 12px; }
+  .bz-yongshen-row { display: flex; gap: 8px; font-size: 13px; margin-bottom: 6px; }
+  .bz-yongshen-row .tag { width: 56px; flex: none; color: var(--muted); }
+  .bz-yongshen-row .vals { font-family: "Noto Serif SC", "Songti SC", "STSong", serif; letter-spacing: 4px; }
+
+  .bz-dayun-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .bz-dayun-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .bz-dayun-strip { display: flex; overflow-x: auto; gap: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); margin-bottom: 8px; }
+  .bz-dayun-strip::-webkit-scrollbar { height: 0; }
+  .bz-dayun-item {
+    flex: none; width: 74px; text-align: center; padding: 14px 4px;
+    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .bz-dayun-age { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+  .bz-dayun-god { font-size: 11px; color: var(--muted); margin-bottom: 8px; height: 14px; }
+  .bz-dayun-char { font-size: 22px; line-height: 1.4; }
+  .bz-dayun-note { font-size: 12px; color: var(--muted); margin-bottom: 32px; }
+
+  .bz-reset {
+    width: 100%; padding: 13px; background: transparent; border: 1px solid var(--ink);
+    color: var(--ink); font-size: 14px; letter-spacing: 3px; cursor: pointer; font-family: inherit;
+  }
+  .bz-reset:active { opacity: 0.7; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ============ BaZi calculation engine (pure JS, no dependencies) ============
+const STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+const STEM_ELEMENT = ["木", "木", "火", "火", "土", "土", "金", "金", "水", "水"];
+const BRANCH_ELEMENT = ["水", "土", "木", "木", "土", "火", "火", "土", "金", "金", "土", "水"];
+const BRANCH_MAIN_STEM = [9, 5, 0, 1, 4, 2, 3, 5, 6, 7, 4, 8];
+const ELEMENT_ORDER = ["木", "火", "土", "金", "水"];
+const PRODUCES = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
+const CONTROLS = { 木: "土", 土: "水", 水: "火", 火: "金", 金: "木" };
+
+const MONTH_CUTOFFS = [
+  [106, "丑"], [204, "寅"], [306, "卯"], [405, "辰"], [506, "巳"], [606, "午"],
+  [707, "未"], [808, "申"], [908, "酉"], [1008, "戌"], [1107, "亥"], [1207, "子"],
+];
+
+function mod(n, m) { return ((n % m) + m) % m; }
+
+function getYearPillar(y, m, d) {
+  const dateVal = m * 100 + d;
+  const effectiveYear = dateVal < 204 ? y - 1 : y;
+  const stemIdx = mod(effectiveYear - 4, 10);
+  const branchIdx = mod(effectiveYear - 4, 12);
+  return { stemIdx, branchIdx, effectiveYear };
+}
+
+function getMonthBranchIdxName(m, d) {
+  const dateVal = m * 100 + d;
+  let chosen = "子";
+  if (dateVal < 106) {
+    chosen = "子";
+  } else {
+    for (const [cutoff, name] of MONTH_CUTOFFS) {
+      if (dateVal >= cutoff) chosen = name;
+    }
+  }
+  return BRANCHES.indexOf(chosen);
+}
+
+function getMonthPillar(yearStemIdx, monthBranchIdx) {
+  const group = mod(yearStemIdx, 5);
+  const startStem = [2, 4, 6, 8, 0][group];
+  const orderFromYin = mod(monthBranchIdx - 2, 12);
+  const stemIdx = mod(startStem + orderFromYin, 10);
+  return { stemIdx, branchIdx: monthBranchIdx };
+}
+
+function getDayPillar(y, m, d) {
+  const base = Date.UTC(1900, 0, 31);
+  const cur = Date.UTC(y, m - 1, d);
+  const diffDays = Math.round((cur - base) / 86400000);
+  const idx = mod(40 + diffDays, 60);
+  return { stemIdx: mod(idx, 10), branchIdx: mod(idx, 12) };
+}
+
+function getHourPillar(dayStemIdx, hour) {
+  const branchIdx = Math.floor(mod(hour + 1, 24) / 2);
+  const group = mod(dayStemIdx, 5);
+  const startStem = [0, 2, 4, 6, 8][group];
+  const stemIdx = mod(startStem + branchIdx, 10);
+  return { stemIdx, branchIdx };
+}
+
+function getLifePalace(yearStemIdx, monthBranchIdx, hourBranchIdx) {
+  const monthNum = mod(monthBranchIdx - 2, 12) + 1;
+  const hourNum = hourBranchIdx + 1;
+  let num = 14 - monthNum - hourNum;
+  if (num <= 0) num += 12;
+  const orderFromYin = num - 1;
+  const branchIdx = mod(2 + orderFromYin, 12);
+  const group = mod(yearStemIdx, 5);
+  const startStem = [2, 4, 6, 8, 0][group];
+  const stemIdx = mod(startStem + orderFromYin, 10);
+  return { stemIdx, branchIdx };
+}
+
+function tenGodFor(dayMasterStemIdx, targetStemIdx) {
+  if (targetStemIdx === dayMasterStemIdx) return "日主";
+  const dayEl = STEM_ELEMENT[dayMasterStemIdx];
+  const dayYY = mod(dayMasterStemIdx, 2);
+  const tgEl = STEM_ELEMENT[targetStemIdx];
+  const tgYY = mod(targetStemIdx, 2);
+  const sameYY = dayYY === tgYY;
+  if (dayEl === tgEl) return sameYY ? "比肩" : "劫財";
+  if (PRODUCES[dayEl] === tgEl) return sameYY ? "食神" : "傷官";
+  if (CONTROLS[dayEl] === tgEl) return sameYY ? "偏財" : "正財";
+  if (CONTROLS[tgEl] === dayEl) return sameYY ? "七殺" : "正官";
+  if (PRODUCES[tgEl] === dayEl) return sameYY ? "偏印" : "正印";
+  return "";
+}
+
+function getAllBoundaries(year) {
+  return MONTH_CUTOFFS.map(([val, name]) => {
+    const month = Math.floor(val / 100), day = val % 100;
+    return { time: Date.UTC(year, month - 1, day), name };
+  });
+}
+
+function getDayun(y, m, d, gender, yearStemIdx, monthPillar) {
+  const yearYinYang = mod(yearStemIdx, 2);
+  const forward = (gender === "male" && yearYinYang === 0) || (gender === "female" && yearYinYang === 1);
+  const dir = forward ? 1 : -1;
+
+  const birthTime = Date.UTC(y, m - 1, d);
+  const boundaries = [...getAllBoundaries(y - 1), ...getAllBoundaries(y), ...getAllBoundaries(y + 1)]
+    .sort((a, b) => a.time - b.time);
+
+  let prev = boundaries[0], next = boundaries[boundaries.length - 1];
+  for (let i = 0; i < boundaries.length - 1; i++) {
+    if (boundaries[i].time <= birthTime && boundaries[i + 1].time > birthTime) {
+      prev = boundaries[i];
+      next = boundaries[i + 1];
+      break;
+    }
+  }
+
+  const days = forward ? (next.time - birthTime) / 86400000 : (birthTime - prev.time) / 86400000;
+  const startAgeYears = Math.max(0, Math.floor(days / 3));
+  const remainderDays = Math.max(0, days - startAgeYears * 3);
+  const startAgeMonths = Math.round(remainderDays * 4);
+
+  const pillars = [];
+  for (let i = 0; i < 8; i++) {
+    const stemIdx = mod(monthPillar.stemIdx + dir * (i + 1), 10);
+    const branchIdx = mod(monthPillar.branchIdx + dir * (i + 1), 12);
+    const startAge = startAgeYears + i * 10;
+    pillars.push({ stemIdx, branchIdx, startAge, endAge: startAge + 9, startYear: y + startAge });
+  }
+
+  return { dir, startAgeYears, startAgeMonths, pillars };
+}
+
+function computeBazi(dateStr, timeStr, hasTime, gender) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const year = getYearPillar(y, m, d);
+  const monthBranchIdx = getMonthBranchIdxName(m, d);
+  const month = getMonthPillar(year.stemIdx, monthBranchIdx);
+  const day = getDayPillar(y, m, d);
+  let hourPillar = null;
+  if (hasTime && timeStr) {
+    const [hh] = timeStr.split(":").map(Number);
+    hourPillar = getHourPillar(day.stemIdx, hh);
+  }
+
+  const pillars = [
+    { label: "年柱", ...year },
+    { label: "月柱", ...month },
+    { label: "日柱", ...day },
+  ];
+  if (hourPillar) pillars.push({ label: "時柱", ...hourPillar });
+
+  const counts = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 };
+  pillars.forEach((p) => {
+    counts[STEM_ELEMENT[p.stemIdx]]++;
+    counts[BRANCH_ELEMENT[p.branchIdx]]++;
+  });
+
+  const dayMasterStemIdx = day.stemIdx;
+  const pillarsWithGods = pillars.map((p) => ({
+    ...p,
+    stemGod: tenGodFor(dayMasterStemIdx, p.stemIdx),
+    branchGod: tenGodFor(dayMasterStemIdx, BRANCH_MAIN_STEM[p.branchIdx]),
+  }));
+
+  const dayun = getDayun(y, m, d, gender, year.stemIdx, month);
+  const dayunWithGods = {
+    ...dayun,
+    pillars: dayun.pillars.map((p) => ({ ...p, stemGod: tenGodFor(dayMasterStemIdx, p.stemIdx) })),
+  };
+
+  let lifePalace = null;
+  if (hourPillar) {
+    const lp = getLifePalace(year.stemIdx, monthBranchIdx, hourPillar.branchIdx);
+    lifePalace = { ...lp, stemGod: tenGodFor(dayMasterStemIdx, lp.stemIdx) };
+  }
+
+  return { pillars: pillarsWithGods, counts, dayMasterStemIdx, year: year.effectiveYear, dayun: dayunWithGods, lifePalace };
+}
+
+function analyzeYongShen(counts, dayMasterElement) {
+  const dayEl = dayMasterElement;
+  const generatorEl = ELEMENT_ORDER.find((el) => PRODUCES[el] === dayEl);
+  const drainEl = PRODUCES[dayEl];
+  const wealthEl = CONTROLS[dayEl];
+  const officerEl = ELEMENT_ORDER.find((el) => CONTROLS[el] === dayEl);
+
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const helperCount = counts[dayEl] + counts[generatorEl];
+  const drainerCount = total - helperCount;
+
+  let strength = "balanced";
+  if (helperCount > drainerCount) strength = "strong";
+  else if (helperCount < drainerCount) strength = "weak";
+
+  let favorable = [], unfavorable = [];
+  if (strength === "strong") {
+    favorable = [drainEl, wealthEl, officerEl];
+    unfavorable = [dayEl, generatorEl];
+  } else if (strength === "weak") {
+    favorable = [dayEl, generatorEl];
+    unfavorable = [drainEl, wealthEl, officerEl];
+  }
+
+  return { strength, helperCount, drainerCount, favorable, unfavorable };
+}
+
+const STRENGTH_TEXT = {
+  strong: "日主偏旺，五行以洩秀、克制、耗損為喜，同類與生扶之物則宜節制。",
+  weak: "日主偏弱，五行以生扶、同類為喜，耗損與克制之物則宜節制。",
+  balanced: "日主強弱大致均衡，喜忌不明顯，可依大運起伏靈活調整。",
+};
+const STRENGTH_LABEL = { strong: "身強", weak: "身弱", balanced: "中和" };
+
+const ELEMENT_TEXT = {
+  木: "生機與生長。你的傾向是不斷向外擴展、追求新的可能，重視成長與空間，有時也需要提醒自己適度收斂。",
+  火: "熱情與表現。你的傾向是行動明快、樂於展現自己，容易感染他人，但也可能需要留意節奏，避免過度消耗。",
+  土: "穩定與承載。你的傾向是踏實可靠、重視信任與根基，善於包容協調，有時需要練習更主動地表達自己。",
+  金: "決斷與秩序。你的傾向是條理分明、重視原則與品質，做事講求效率，也可以適時放鬆對完美的堅持。",
+  水: "靈活與智慧。你的傾向是善於觀察、順勢而為，思路靈活多變，也需要留意在多重可能中找到方向。",
+};
+
+// ============ App state & rendering ============
+const state = {
+  step: "input",
+  date: "",
+  time: "",
+  hasTime: true,
+  gender: "female",
+  result: null,
+};
+
+const root = document.getElementById("root");
+
+function esc(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function render() {
+  root.innerHTML = state.step === "input" ? renderInput() : renderResult();
+  attachHandlers();
+  if (state.step === "result") {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        document.querySelectorAll(".bz-pillar").forEach((el) => el.classList.add("show"));
+        document.querySelectorAll(".bz-elem-fill").forEach((el) => {
+          el.style.width = el.dataset.target;
+        });
+      }, 50);
+    });
+  }
+}
+
+function renderInput() {
+  const canSubmit = state.date && (!state.hasTime || state.time);
+  return `
+    <div class="bz-container">
+      <div class="bz-hero">
+        <div class="bz-hero-mark bz-serif">八字</div>
+        <div class="bz-hero-sub">四柱命盤・十神・大運</div>
+      </div>
+
+      <div class="bz-field">
+        <label>出生日期（陽曆）</label>
+        <input type="date" id="dateInput" value="${esc(state.date)}" />
+      </div>
+
+      <div class="bz-field">
+        <label>出生時間</label>
+        <input type="time" id="timeInput" value="${esc(state.time)}" ${state.hasTime ? "" : "disabled"} style="opacity:${state.hasTime ? 1 : 0.4}" />
+      </div>
+
+      <div class="bz-checkbox-row">
+        <input type="checkbox" id="notimeCheckbox" ${state.hasTime ? "" : "checked"} />
+        <label for="notimeCheckbox" style="margin:0">不確定出生時辰，只排年月日</label>
+      </div>
+
+      <div class="bz-field">
+        <label>性別（用於推算大運方向）</label>
+        <div class="bz-gender">
+          <button id="genderFemale" class="${state.gender === "female" ? "active" : ""}">女</button>
+          <button id="genderMale" class="${state.gender === "male" ? "active" : ""}">男</button>
+        </div>
+      </div>
+
+      <button class="bz-submit" id="submitBtn" ${canSubmit ? "" : "disabled"}>排　盤</button>
+
+      <div class="bz-note">
+        本工具以陽曆日期與簡化節氣分界推算，十神依主氣計算，<br/>
+        大運起運歲數為簡化估算，命宮需已知時辰始能推算，<br/>
+        五行喜忌採簡化扶抑法（未計季節旺衰），僅供娛樂參考，非專業命理諮詢。
+      </div>
+    </div>
+  `;
+}
+
+function renderResult() {
+  const r = state.result;
+  const maxCount = Math.max(1, ...Object.values(r.counts));
+  const dayMasterElement = STEM_ELEMENT[r.dayMasterStemIdx];
+  const yongShen = analyzeYongShen(r.counts, dayMasterElement);
+  const [yy, mm, dd] = state.date.split("-");
+
+  const pillarsHtml = r.pillars.map((p, i) => `
+    <div class="bz-pillar" style="transition-delay:${i * 90}ms">
+      <div class="bz-pillar-label">${p.label}</div>
+      <div class="bz-pillar-god${p.stemGod === "日主" ? " self" : ""}">${p.stemGod}</div>
+      <div class="bz-pillar-char bz-serif">${STEMS[p.stemIdx]}</div>
+      <div class="bz-pillar-char bz-serif">${BRANCHES[p.branchIdx]}</div>
+      <div class="bz-pillar-god">${p.branchGod}</div>
+    </div>
+  `).join("");
+
+  const lifePalaceHtml = r.lifePalace ? `
+    <div class="bz-lifepalace">
+      <span style="color:var(--muted)">命宮</span>
+      <span class="bz-lifepalace-chars bz-serif">${STEMS[r.lifePalace.stemIdx]}${BRANCHES[r.lifePalace.branchIdx]}</span>
+      <span style="color:var(--muted)">${STEM_ELEMENT[r.lifePalace.stemIdx]}・${r.lifePalace.stemGod}</span>
+    </div>
+  ` : `<div class="bz-lifepalace-empty">命宮需知道出生時辰方可推算</div>`;
+
+  const elementsHtml = ELEMENT_ORDER.map((el) => `
+    <div class="bz-elem-row">
+      <div class="bz-elem-name bz-serif">${el}</div>
+      <div class="bz-elem-dot${yongShen.favorable.includes(el) ? " favor" : ""}"></div>
+      <div class="bz-elem-track"><div class="bz-elem-fill" data-target="${(r.counts[el] / maxCount) * 100}%"></div></div>
+      <div class="bz-elem-count">${r.counts[el]}</div>
+    </div>
+  `).join("");
+
+  const yongShenHtml = `
+    <div class="bz-yongshen">
+      <div class="bz-section-title">五行喜忌</div>
+      <div class="bz-yongshen-head">
+        <span class="bz-yongshen-badge">${STRENGTH_LABEL[yongShen.strength]}</span>
+        <span class="bz-yongshen-ratio">生扶 ${yongShen.helperCount}　耗剋 ${yongShen.drainerCount}</span>
+      </div>
+      <div class="bz-yongshen-text">${STRENGTH_TEXT[yongShen.strength]}</div>
+      ${yongShen.strength !== "balanced" ? `
+        <div class="bz-yongshen-row"><span class="tag">喜（宜補）</span><span class="vals">${yongShen.favorable.join("　")}</span></div>
+        <div class="bz-yongshen-row"><span class="tag">忌（宜避）</span><span class="vals">${yongShen.unfavorable.join("　")}</span></div>
+      ` : ""}
+    </div>
+  `;
+
+  const dayunHtml = r.dayun.pillars.map((p) => `
+    <div class="bz-dayun-item">
+      <div class="bz-dayun-age">${p.startAge}–${p.endAge}歲</div>
+      <div class="bz-dayun-god">${p.stemGod}</div>
+      <div class="bz-dayun-char bz-serif">${STEMS[p.stemIdx]}</div>
+      <div class="bz-dayun-char bz-serif">${BRANCHES[p.branchIdx]}</div>
+    </div>
+  `).join("");
+
+  return `
+    <div class="bz-container">
+      <div class="bz-datehead">
+        ${yy}年${mm}月${dd}日${state.hasTime && state.time ? `　${state.time}` : "　時辰未定"}　${state.gender === "male" ? "男" : "女"}
+      </div>
+
+      <div class="bz-pillars" style="grid-template-columns:repeat(${r.pillars.length},1fr)">${pillarsHtml}</div>
+
+      <div class="bz-daymaster">
+        <div class="bz-seal bz-serif">${STEMS[r.dayMasterStemIdx]}</div>
+        <div class="bz-daymaster-text">
+          日主為 <b>${STEMS[r.dayMasterStemIdx]}${dayMasterElement}</b>，${ELEMENT_TEXT[dayMasterElement]}
+        </div>
+      </div>
+
+      ${lifePalaceHtml}
+
+      <div class="bz-elements">
+        <div class="bz-section-title">五行分佈</div>
+        ${elementsHtml}
+      </div>
+
+      ${yongShenHtml}
+
+      <div class="bz-dayun-head">
+        <div class="bz-section-title" style="margin-bottom:0">大運</div>
+        <div class="bz-dayun-sub">${r.dayun.dir === 1 ? "順排" : "逆排"}</div>
+      </div>
+      <div class="bz-dayun-sub">約 ${r.dayun.startAgeYears} 歲 ${r.dayun.startAgeMonths} 個月起運</div>
+      <div class="bz-dayun-strip">${dayunHtml}</div>
+      <div class="bz-dayun-note">左右滑動查看各階段大運・年齡與起運日期為簡化估算</div>
+
+      <button class="bz-reset" id="resetBtn">重新排盤</button>
+    </div>
+  `;
+}
+
+function attachHandlers() {
+  if (state.step === "input") {
+    const dateInput = document.getElementById("dateInput");
+    const timeInput = document.getElementById("timeInput");
+    const notimeCheckbox = document.getElementById("notimeCheckbox");
+    const genderFemale = document.getElementById("genderFemale");
+    const genderMale = document.getElementById("genderMale");
+    const submitBtn = document.getElementById("submitBtn");
+
+    dateInput.addEventListener("change", (e) => { state.date = e.target.value; render(); });
+    timeInput.addEventListener("change", (e) => { state.time = e.target.value; render(); });
+    notimeCheckbox.addEventListener("change", (e) => { state.hasTime = !e.target.checked; render(); });
+    genderFemale.addEventListener("click", () => { state.gender = "female"; render(); });
+    genderMale.addEventListener("click", () => { state.gender = "male"; render(); });
+    submitBtn.addEventListener("click", () => {
+      if (submitBtn.disabled) return;
+      state.result = computeBazi(state.date, state.time, state.hasTime, state.gender);
+      state.step = "result";
+      render();
+    });
+  } else {
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      state.step = "input";
+      state.result = null;
+      render();
+    });
+  }
+}
+
+render();
+</script>
+</body>
+</html>
